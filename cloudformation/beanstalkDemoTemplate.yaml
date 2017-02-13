@@ -1,0 +1,241 @@
+---
+AWSTemplateFormatVersion: '2010-09-09'
+Description: 'AWS CloudFormation Template that creates a pipeline and elasticbeanstalk application.'
+Parameters:
+  KeyName:
+    Description: Name of an existing EC2 KeyPair to enable SSH access to the AWS Elastic
+      Beanstalk instance
+    Type: AWS::EC2::KeyPair::KeyName
+    ConstraintDescription: must be the name of an existing EC2 KeyPair.
+Mappings:
+  Region2Principal:
+    us-east-1:
+      EC2Principal: ec2.amazonaws.com
+      OpsWorksPrincipal: opsworks.amazonaws.com
+    us-west-2:
+      EC2Principal: ec2.amazonaws.com
+      OpsWorksPrincipal: opsworks.amazonaws.com
+    us-west-1:
+      EC2Principal: ec2.amazonaws.com
+      OpsWorksPrincipal: opsworks.amazonaws.com
+    eu-west-1:
+      EC2Principal: ec2.amazonaws.com
+      OpsWorksPrincipal: opsworks.amazonaws.com
+    eu-west-2:
+      EC2Principal: ec2.amazonaws.com
+      OpsWorksPrincipal: opsworks.amazonaws.com
+    ap-southeast-1:
+      EC2Principal: ec2.amazonaws.com
+      OpsWorksPrincipal: opsworks.amazonaws.com
+    ap-northeast-1:
+      EC2Principal: ec2.amazonaws.com
+      OpsWorksPrincipal: opsworks.amazonaws.com
+    ap-northeast-2:
+      EC2Principal: ec2.amazonaws.com
+      OpsWorksPrincipal: opsworks.amazonaws.com
+    ap-southeast-2:
+      EC2Principal: ec2.amazonaws.com
+      OpsWorksPrincipal: opsworks.amazonaws.com
+    ap-south-1:
+      EC2Principal: ec2.amazonaws.com
+      OpsWorksPrincipal: opsworks.amazonaws.com
+    us-east-2:
+      EC2Principal: ec2.amazonaws.com
+      OpsWorksPrincipal: opsworks.amazonaws.com
+    ca-central-1:
+      EC2Principal: ec2.amazonaws.com
+      OpsWorksPrincipal: opsworks.amazonaws.com
+    sa-east-1:
+      EC2Principal: ec2.amazonaws.com
+      OpsWorksPrincipal: opsworks.amazonaws.com
+    cn-north-1:
+      EC2Principal: ec2.amazonaws.com.cn
+      OpsWorksPrincipal: opsworks.amazonaws.com.cn
+    eu-central-1:
+      EC2Principal: ec2.amazonaws.com
+      OpsWorksPrincipal: opsworks.amazonaws.com
+Resources:
+  WebServerRole:
+    Type: AWS::IAM::Role
+    Properties:
+      AssumeRolePolicyDocument:
+        Statement:
+        - Effect: Allow
+          Principal:
+            Service:
+            - Fn::FindInMap:
+              - Region2Principal
+              - Ref: AWS::Region
+              - EC2Principal
+          Action:
+          - sts:AssumeRole
+      Path: "/"
+  WebServerRolePolicy:
+    Type: AWS::IAM::Policy
+    Properties:
+      PolicyName: WebServerRole
+      PolicyDocument:
+        Statement:
+        - Effect: Allow
+          NotAction: iam:*
+          Resource: "*"
+      Roles:
+      - Ref: WebServerRole
+  WebServerInstanceProfile:
+    Type: AWS::IAM::InstanceProfile
+    Properties:
+      Path: "/"
+      Roles:
+      - Ref: WebServerRole
+  BeanstalkDemo:
+    Type: AWS::ElasticBeanstalk::Application
+    Properties:
+      Description: AWS Elastic Beanstalk Sample Ruby Sinatra Application
+  BeanstalkDemoVersion: #TODO: this must be created from the codepipeline and passed in.
+    Type: AWS::ElasticBeanstalk::ApplicationVersion
+    Properties:
+      Description: AWS Elastic Beanstalk Demo App Version
+      ApplicationName:
+        Ref: BeanstalkDemo
+      SourceBundle:
+        S3Bucket:
+          Fn::Join: #TODO: inject this from codepipeline?
+          - "-"
+          - - beanstalk-demo
+            - Ref: AWS::Region
+        S3Key: BeanstalkDemo.zip #TODO: inject this from codepipeline
+  BeanstalkDemoConfigurationTemplateNonProd: #create non-prod template as well with thinner resourcing.
+    Type: AWS::ElasticBeanstalk::ConfigurationTemplate
+    Properties:
+      ApplicationName:
+        Ref: BeanstalkDemo
+      Description: SSH access to Ruby Application
+      #SolutionStackNames: http://docs.aws.amazon.com/elasticbeanstalk/latest/dg/concepts.platforms.html#concepts.platforms.ruby
+      SolutionStackName: 64bit Amazon Linux 2016.09 v2.3.1 running Ruby 2.3 (Puma)
+      # SourceConfiguration:
+      #   ApplicationName:
+      #     Ref: "mySecondApp"
+      #   TemplateName:
+      #     Ref: "mySourceTemplate"
+      OptionSettings:
+      - OptionName: Availability Zones
+        ResourceName: AWSEBAutoScalingGroup
+        Namespace: aws:autoscaling:asg
+        Value: Any
+      - OptionName: Cooldown
+        ResourceName: AWSEBAutoScalingGroup
+        Namespace: aws:autoscaling:asg
+        Value: '360'
+      - Namespace: aws:autoscaling:launchconfiguration
+        OptionName: EC2KeyName
+        Value:
+          Ref: KeyName
+      - Namespace: aws:autoscaling:launchconfiguration
+        OptionName: IamInstanceProfile
+        Value:
+          Ref: WebServerInstanceProfile
+      - OptionName: ImageId
+        ResourceName: AWSEBAutoScalingLaunchConfiguration
+        Namespace: aws:autoscaling:launchconfiguration
+        Value: ami-d6a1ffb0
+      - OptionName: InstanceType
+        Namespace: aws:autoscaling:launchconfiguration
+        Value: t2.micro
+      - OptionName: MonitoringInterval
+        ResourceName: AWSEBAutoScalingLaunchConfiguration
+        Namespace: aws:autoscaling:launchconfiguration
+        Value: 5 minute
+      - OptionName: RollingUpdateType
+        ResourceName: AWSEBAutoScalingGroup
+        Namespace: aws:autoscaling:updatepolicy:rollingupdate
+        Value: Immutable
+      - OptionName: Timeout
+        ResourceName: AWSEBAutoScalingGroup
+        Namespace: aws:autoscaling:updatepolicy:rollingupdate
+        Value: PT5M
+      - OptionName: EnvironmentVariables
+        Namespace: aws:cloudformation:template:parameter
+        Value: RACK_ENV=production,RAILS_SKIP_MIGRATIONS=false,RAILS_SKIP_ASSET_COMPILATION=false,BUNDLE_WITHOUT=test:development
+      - OptionName: InstancePort
+        Namespace: aws:cloudformation:template:parameter
+        Value: '80'
+      - OptionName: RubyVersion
+        Namespace: aws:cloudformation:template:parameter
+        Value: 2.3.1
+      - OptionName: Application Healthcheck URL
+        Namespace: aws:elasticbeanstalk:application
+        Value: "/health"
+      - OptionName: BUNDLE_WITHOUT
+        Namespace: aws:elasticbeanstalk:application:environment
+        Value: test:development
+      - OptionName: DeploymentPolicy
+        Namespace: aws:elasticbeanstalk:command
+        Value: AllAtOnce
+      - OptionName: Timeout
+        Namespace: aws:elasticbeanstalk:command
+        Value: '600'
+      - OptionName: RollbackLaunchOnFailure
+        Namespace: aws:elasticbeanstalk:control
+        Value: 'false'
+      - OptionName: EnvironmentType
+        Namespace: aws:elasticbeanstalk:environment
+        Value: SingleInstance
+      - OptionName: ConfigDocument
+        Namespace: aws:elasticbeanstalk:healthreporting:system
+        Value: '{"Version":1,"CloudWatchMetrics":{"Instance":{"CPUIrq":null,"LoadAverage5min":null,"ApplicationRequests5xx":null,"ApplicationRequests4xx":null,"CPUUser":null,"LoadAverage1min":null,"ApplicationLatencyP50":null,"CPUIdle":null,"InstanceHealth":null,"ApplicationLatencyP95":null,"ApplicationLatencyP85":null,"RootFilesystemUtil":null,"ApplicationLatencyP90":null,"CPUSystem":null,"ApplicationLatencyP75":null,"CPUSoftirq":null,"ApplicationLatencyP10":null,"ApplicationLatencyP99":null,"ApplicationRequestsTotal":null,"ApplicationLatencyP99.9":null,"ApplicationRequests3xx":null,"ApplicationRequests2xx":null,"CPUIowait":null,"CPUNice":null},"Environment":{"InstancesSevere":null,"InstancesDegraded":null,"ApplicationRequests5xx":null,"ApplicationRequests4xx":null,"ApplicationLatencyP50":null,"ApplicationLatencyP95":null,"ApplicationLatencyP85":null,"InstancesUnknown":null,"ApplicationLatencyP90":null,"InstancesInfo":null,"InstancesPending":null,"ApplicationLatencyP75":null,"ApplicationLatencyP10":null,"ApplicationLatencyP99":null,"ApplicationRequestsTotal":null,"InstancesNoData":null,"ApplicationLatencyP99.9":null,"ApplicationRequests3xx":null,"ApplicationRequests2xx":null,"InstancesOk":null,"InstancesWarning":null}}}'
+      - OptionName: HealthCheckSuccessThreshold
+        Namespace: aws:elasticbeanstalk:healthreporting:system
+        Value: Ok
+      - OptionName: SystemType
+        Namespace: aws:elasticbeanstalk:healthreporting:system
+        Value: enhanced
+      - OptionName: Automatically Terminate Unhealthy Instances
+        Namespace: aws:elasticbeanstalk:monitoring
+        Value: 'true'
+
+
+
+  # TODO: create SGs elsewhere in CF templates? - OptionName: SecurityGroups
+  #   ResourceName: AWSEBAutoScalingLaunchConfiguration
+  #   Namespace: aws:autoscaling:launchconfiguration
+  #   Value: awseb-e-3f8m43t9em-stack-AWSEBSecurityGroup-13800Q4IZX5VL
+
+  BeanstalkDemoEnvironmentDev: #create dev/test envs that use the non-prod configuration.
+    Type: AWS::ElasticBeanstalk::Environment
+    Properties:
+      Description: Development demo environment running sample ruby sinatra application.
+      ApplicationName:
+        Ref: BeanstalkDemo
+      TemplateName:
+        Ref: BeanstalkDemoConfigurationTemplateNonProd
+      VersionLabel:
+        Ref: BeanstalkDemoVersion
+  BeanstalkDemoEnvironmentProd: #create dev/test envs that use the non-prod configuration.
+    Type: AWS::ElasticBeanstalk::Environment
+    Properties:
+      Description: Production environment running ruby sinatra application.
+      ApplicationName:
+        Ref: BeanstalkDemo
+      TemplateName:
+        Ref: BeanstalkDemoConfigurationTemplateProd #TODO copy from exported prod config.
+      VersionLabel:
+        Ref: BeanstalkDemoVersion
+Outputs:
+  ProdURL:
+    Description: URL of the AWS Elastic Beanstalk Environment
+    Value:
+      Fn::Join:
+      - ''
+      - - http://
+        - Fn::GetAtt:
+          - BeanstalkDemoEnvironmentProd
+          - EndpointURL
+  DevURL:
+    Description: URL of the ec2 instance
+    Value:
+      Fn::Join:
+      - ''
+      - - http://
+        - Fn::GetAtt:
+          - BeanstalkDemoEnvironmentDev
+          - EndpointURL
