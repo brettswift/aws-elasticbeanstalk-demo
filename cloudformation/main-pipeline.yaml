@@ -1,0 +1,201 @@
+AWSTemplateFormatVersion: "2010-09-09"
+
+Description: >
+  This stack does nothing but build another stack.  At first it seems like a superfluous step
+  however the function of it is getting the real application pipeline triggered by source control.
+  NOTE: When deleting, delete the main Application stack first, as deleting this stack will delete
+  the role required to delete the stack and some resources the child stack creates.
+Parameters:
+  PipelineName:
+    Description: A name for the pipeline
+    Type: String
+    Default: "ElasticBeanstalkDemoPipeline"
+  GithubUser:
+    Description: Github account where the source files exist for this VPC
+    Type: String
+  GithubToken:
+    Description: Secret. Token used for access to the account specified.
+    NoEcho: true
+    Type: String
+    ConstraintDescription: may be a personal access token.
+  Repo:
+    Type: String
+    Description: GitHub Repo to pull from. Only the Name. not the URL
+    Default: aws-elasticbeanstalk-demo
+  Branch:
+    Type: String
+    Description: Branch to use from Repo. Only the Name. not the URL
+    Default: master
+  TemplateFileName:
+    Default: cloudformation/applicationPipeline.yaml
+    Description: The file name of the Application template which builds the app and the pipeline.
+    Type: String
+    ConstraintDescription: relative path within the source repository "Repo".
+  StackName:
+    Default: ElasticBeanstalkDemo
+    Description: A name for the application stack.
+    Type: String
+  ChangeSetName:
+    Default: UpdateMainPipeline
+    Description: A name for the change set when manual uploads happen.
+    Type: String
+  Email:
+    Description: The email address where CodePipeline sends pipeline notifications
+    Type: String
+
+Metadata:
+  AWS::CloudFormation::Interface:
+    ParameterGroups:
+      - Label:
+          default: "CodePipeline Settings"
+        Parameters:
+          - PipelineName
+          - GithubUser
+          - GithubToken
+          - Repo
+          - Branch
+          - Email
+      - Label:
+          default: "Application Stack Config File"
+        Parameters:
+          - TemplateFileName
+          - StackName
+          - ChangeSetName
+Resources:
+  ArtifactStoreBucket:
+    Type: AWS::S3::Bucket
+    Properties:
+      VersioningConfiguration:
+        Status: Enabled
+  CFNRole:
+      Type: AWS::IAM::Role
+      Properties:
+        AssumeRolePolicyDocument:
+          Statement:
+          - Action: ['sts:AssumeRole']
+            Effect: Allow
+            Principal:
+              Service: [cloudformation.amazonaws.com]
+          Version: '2012-10-17'
+        Path: /
+        # Policies:
+        #   - PolicyName: CloudFormationRole
+        #     PolicyDocument:
+        #       Version: '2012-10-17'
+        #       Statement:
+        #         - Action:
+        #             - 'ec2:*'
+        #           Effect: Allow
+        #           Resource: '*'
+  PipelineRole:
+    Type: AWS::IAM::Role
+    Properties:
+      AssumeRolePolicyDocument:
+        Statement:
+        - Action: ['sts:AssumeRole']
+          Effect: Allow
+          Principal:
+            Service: [codepipeline.amazonaws.com]
+        Version: '2012-10-17'
+      Path: /
+      Policies:
+        - PolicyName: CodePipelineAccess
+          PolicyDocument:
+            Version: '2012-10-17'
+            Statement:
+              - Action:
+                - 's3:*'
+                - 'cloudformation:CreateStack'
+                - 'cloudformation:DescribeStacks'
+                - 'cloudformation:DeleteStack'
+                - 'cloudformation:UpdateStack'
+                - 'cloudformation:CreateChangeSet'
+                - 'cloudformation:ExecuteChangeSet'
+                - 'cloudformation:DeleteChangeSet'
+                - 'cloudformation:DescribeChangeSet'
+                - 'cloudformation:SetStackPolicy'
+                - 'iam:PassRole'
+                - 'sns:Publish'
+                Effect: Allow
+                Resource: '*'
+  CodePipelineSNSTopic:
+    Type: AWS::SNS::Topic
+    Properties:
+      Subscription:
+        - Endpoint: !Ref Email
+          Protocol: email
+  Pipeline:
+    Type: AWS::CodePipeline::Pipeline
+    Properties:
+      ArtifactStore:
+        Location: !Ref 'ArtifactStoreBucket'
+        Type: S3
+      DisableInboundStageTransitions: []
+      Name: !Ref 'PipelineName'
+      RoleArn: !GetAtt [PipelineRole, Arn]
+      Stages:
+        - Name: Source
+          Actions:
+          - InputArtifacts: []
+            Name: Source
+            ActionTypeId:
+              Category: Source
+              Owner: ThirdParty
+              Version: '1'
+              Provider: GitHub
+            OutputArtifacts:
+            - Name: TemplateSource
+                # Ref: MyInputArtifacts #use input artifacts when this comes from a master artifact
+                # see the stelligent samples for how thier master template uses this one.
+            Configuration:
+              Owner:
+                Ref: GithubUser
+              Repo:
+                Ref: Repo
+              Branch:
+                Ref: Branch
+              OAuthToken:
+                Ref: GithubToken
+            RunOrder: 1
+        - Name: SetupApplicationAndPipeline
+          Actions:
+            - Name: CreateChangeSet
+              ActionTypeId:
+                Category: Deploy
+                Owner: AWS
+                Provider: CloudFormation
+                Version: '1'
+              InputArtifacts:
+                - Name: TemplateSource
+              Configuration:
+                ActionMode: CHANGE_SET_REPLACE
+                RoleArn: !GetAtt [CFNRole, Arn]
+                StackName: !Ref StackName
+                ChangeSetName: !Ref ChangeSetName
+                # TemplateConfiguration: !Sub "TemplateSource::${ProdStackConfig}"
+                TemplatePath: !Sub "TemplateSource::${TemplateFileName}"
+                GithubUser:  !Ref GithubUser
+                GithubToken: !Ref GithubToken
+              RunOrder: 1
+            - Name: ApproveChangeSet
+              ActionTypeId:
+                Category: Approval
+                Owner: AWS
+                Provider: Manual
+                Version: '1'
+              Configuration:
+                NotificationArn: !Ref CodePipelineSNSTopic
+                CustomData: !Sub 'A new change set was created for the ${StackName} stack. Do you want to implement the changes?'
+              RunOrder: 2
+            - Name: ExecuteChangeSet
+              ActionTypeId:
+                Category: Deploy
+                Owner: AWS
+                Provider: CloudFormation
+                Version: '1'
+              Configuration:
+                ActionMode: CHANGE_SET_EXECUTE
+                ChangeSetName: !Ref ChangeSetName
+                RoleArn: !GetAtt [CFNRole, Arn]
+                StackName: !Ref StackName
+              RunOrder: 3

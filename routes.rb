@@ -12,6 +12,7 @@ get '/' do
   This page is pretty useless in dev. But in prod it will provide evidence that the loadbalancer
   is functioning by showing you the IP of the webserver host.
 </i>
+<i> Version 2 </i>
 TERMINATOR
 end
 
