@@ -131,14 +131,13 @@ Resources:
       - OptionName: RollingUpdateEnabled
         ResourceName: AWSEBAutoScalingGroup
         Namespace: aws:autoscaling:updatepolicy:rollingupdate
-        Value: Immutable #if immutable so must be DeploymentPolicy
+        Value: true
       - OptionName: RollingUpdateType
-        ResourceName: AWSEBAutoScalingGroup
         Namespace: aws:autoscaling:updatepolicy:rollingupdate
-        Value: Immutable #if immutable so must be DeploymentPolicy
+        Value: 'Immutable' #if immutable so must be DeploymentPolicy
       - OptionName: DeploymentPolicy
         Namespace: aws:elasticbeanstalk:command
-        Value: Immutable #if immutable so must be RollingUpdateType
+        Value: 'Immutable' #if immutable so must be RollingUpdateType
       - OptionName: Timeout
         ResourceName: AWSEBAutoScalingGroup
         Namespace: aws:autoscaling:updatepolicy:rollingupdate
@@ -147,9 +146,9 @@ Resources:
         ResourceName: AWSEBAutoScalingGroup
         Namespace: aws:autoscaling:updatepolicy:rollingupdate
         Value: 1
-      # - OptionName: EnvironmentVariables
-      #   Namespace: aws:cloudformation:template:parameter
-      #   Value: RACK_ENV=production,RAILS_SKIP_MIGRATIONS=false,RAILS_SKIP_ASSET_COMPILATION=false,BUNDLE_WITHOUT=test:development
+      - OptionName: EnvironmentVariables
+        Namespace: aws:cloudformation:template:parameter
+        Value: RACK_ENV=production,RAILS_SKIP_MIGRATIONS=false,RAILS_SKIP_ASSET_COMPILATION=false,BUNDLE_WITHOUT=test:development
       - OptionName: InstancePort
         Namespace: aws:cloudformation:template:parameter
         Value: '80' #TODO: move port to 8080
@@ -162,24 +161,24 @@ Resources:
       - OptionName: BUNDLE_WITHOUT
         Namespace: aws:elasticbeanstalk:application:environment
         Value: test:development
-      # - OptionName: Timeout
-      #   Namespace: aws:elasticbeanstalk:command
-      #   Value: '600'
-      # - OptionName: RollbackLaunchOnFailure
-      #   Namespace: aws:elasticbeanstalk:control
-      #   Value: 'true'
-      # - OptionName: ConfigDocument
-      #   Namespace: aws:elasticbeanstalk:healthreporting:system
-      #   Value: '{"Version":1,"CloudWatchMetrics":{"Instance":{"CPUIrq":null,"LoadAverage5min":null,"ApplicationRequests5xx":null,"ApplicationRequests4xx":null,"CPUUser":null,"LoadAverage1min":null,"ApplicationLatencyP50":null,"CPUIdle":null,"InstanceHealth":null,"ApplicationLatencyP95":null,"ApplicationLatencyP85":null,"RootFilesystemUtil":null,"ApplicationLatencyP90":null,"CPUSystem":null,"ApplicationLatencyP75":null,"CPUSoftirq":null,"ApplicationLatencyP10":null,"ApplicationLatencyP99":null,"ApplicationRequestsTotal":null,"ApplicationLatencyP99.9":null,"ApplicationRequests3xx":null,"ApplicationRequests2xx":null,"CPUIowait":null,"CPUNice":null},"Environment":{"InstancesSevere":null,"InstancesDegraded":null,"ApplicationRequests5xx":null,"ApplicationRequests4xx":null,"ApplicationLatencyP50":null,"ApplicationLatencyP95":null,"ApplicationLatencyP85":null,"InstancesUnknown":null,"ApplicationLatencyP90":null,"InstancesInfo":null,"InstancesPending":null,"ApplicationLatencyP75":null,"ApplicationLatencyP10":null,"ApplicationLatencyP99":null,"ApplicationRequestsTotal":null,"InstancesNoData":null,"ApplicationLatencyP99.9":null,"ApplicationRequests3xx":null,"ApplicationRequests2xx":null,"InstancesOk":null,"InstancesWarning":null}}}'
-      # - OptionName: HealthCheckSuccessThreshold
-      #   Namespace: aws:elasticbeanstalk:healthreporting:system
-      #   Value: Ok
+      - OptionName: Timeout
+        Namespace: aws:elasticbeanstalk:command
+        Value: '600'
+      - OptionName: RollbackLaunchOnFailure
+        Namespace: aws:elasticbeanstalk:control
+        Value: 'true'
+      - OptionName: ConfigDocument
+        Namespace: aws:elasticbeanstalk:healthreporting:system
+        Value: '{"Version":1,"CloudWatchMetrics":{"Instance":{"CPUIrq":null,"LoadAverage5min":null,"ApplicationRequests5xx":null,"ApplicationRequests4xx":null,"CPUUser":null,"LoadAverage1min":null,"ApplicationLatencyP50":null,"CPUIdle":null,"InstanceHealth":null,"ApplicationLatencyP95":null,"ApplicationLatencyP85":null,"RootFilesystemUtil":null,"ApplicationLatencyP90":null,"CPUSystem":null,"ApplicationLatencyP75":null,"CPUSoftirq":null,"ApplicationLatencyP10":null,"ApplicationLatencyP99":null,"ApplicationRequestsTotal":null,"ApplicationLatencyP99.9":null,"ApplicationRequests3xx":null,"ApplicationRequests2xx":null,"CPUIowait":null,"CPUNice":null},"Environment":{"InstancesSevere":null,"InstancesDegraded":null,"ApplicationRequests5xx":null,"ApplicationRequests4xx":null,"ApplicationLatencyP50":null,"ApplicationLatencyP95":null,"ApplicationLatencyP85":null,"InstancesUnknown":null,"ApplicationLatencyP90":null,"InstancesInfo":null,"InstancesPending":null,"ApplicationLatencyP75":null,"ApplicationLatencyP10":null,"ApplicationLatencyP99":null,"ApplicationRequestsTotal":null,"InstancesNoData":null,"ApplicationLatencyP99.9":null,"ApplicationRequests3xx":null,"ApplicationRequests2xx":null,"InstancesOk":null,"InstancesWarning":null}}}'
+      - OptionName: HealthCheckSuccessThreshold
+        Namespace: aws:elasticbeanstalk:healthreporting:system
+        Value: Ok
       - OptionName: SystemType
         Namespace: aws:elasticbeanstalk:healthreporting:system
         Value: enhanced
-      # # - OptionName: Automatically Terminate Unhealthy Instances
-      # #   Namespace: aws:elasticbeanstalk:monitoring
-      # #   Value: 'true' #TODO: chaos monkey!
+      - OptionName: Automatically Terminate Unhealthy Instances
+        Namespace: aws:elasticbeanstalk:monitoring
+        Value: 'true' #TODO: chaos monkey!
   BeanstalkDemoEnvDev: #create dev/test envs that use the non-prod configuration.
     Type: AWS::ElasticBeanstalk::Environment
     DependsOn:
