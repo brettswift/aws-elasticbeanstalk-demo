@@ -66,6 +66,34 @@ Metadata:
           - Email
 # Mappings: none yet!
 Resources:
+  WebServerRole:
+    Type: AWS::IAM::Role
+    Properties:
+      AssumeRolePolicyDocument:
+        Statement:
+        - Effect: Allow
+          Principal:
+            Service: ec2.amazonaws.com
+          Action:
+          - sts:AssumeRole
+      Path: "/"
+  WebServerRolePolicy:
+    Type: AWS::IAM::Policy
+    Properties:
+      PolicyName: WebServerRole
+      PolicyDocument:
+        Statement:
+        - Effect: Allow
+          NotAction: iam:*
+          Resource: "*"
+      Roles:
+      - Ref: WebServerRole
+  WebServerInstanceProfile:
+    Type: AWS::IAM::InstanceProfile
+    Properties:
+      Path: "/"
+      Roles:
+      - Ref: WebServerRole
   BeanstalkDemo:
     Type: AWS::ElasticBeanstalk::Application
     Properties:
@@ -114,6 +142,10 @@ Resources:
         ResourceName: AWSEBAutoScalingGroup
         Namespace: aws:autoscaling:asg
         Value: '360'
+      - Namespace: aws:autoscaling:launchconfiguration
+        OptionName: IamInstanceProfile
+        Value:
+          Ref: WebServerInstanceProfile
       - OptionName: MeasureName
         ResourceName: AWSEBAutoScalingGroup
         Namespace: aws:autoscaling:trigger
@@ -137,7 +169,7 @@ Resources:
       - OptionName: UpperThreshold
         ResourceName: AWSEBAutoScalingGroup
         Namespace: aws:autoscaling:trigger
-        Value: 60        
+        Value: 60
       - OptionName: MinSize
         Namespace: aws:autoscaling:asg
         Value: '2'
