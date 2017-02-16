@@ -9,8 +9,21 @@ ParameterKey=GithubToken,ParameterValue=$GITHUB_AWS_TOKEN \
 --tags Key=owner,Value=`whoami`
 ```
 
+Update Stack
+
 ```
 aws cloudformation update-stack --stack-name BeanstalkDemo \
+--template-body file:///Users/bswift/src/aws/eb_demo/cloudformation/applicationPipeline.yaml \
+--region eu-west-1 --capabilities="CAPABILITY_IAM" \
+--parameters ParameterKey=PipelineName,ParameterValue=BeanstalkDemoPipeline \
+ParameterKey=GithubUser,ParameterValue=brettswift \
+ParameterKey=GithubToken,ParameterValue=$GITHUB_AWS_TOKEN
+```
+Create Changeset Stack
+
+```
+aws cloudformation create-change-set --stack-name BeanstalkDemo \
+--change-set-name "ManualChangeFromCLI" \
 --template-body file:///Users/bswift/src/aws/eb_demo/cloudformation/applicationPipeline.yaml \
 --region eu-west-1 --capabilities="CAPABILITY_IAM" \
 --parameters ParameterKey=PipelineName,ParameterValue=BeanstalkDemoPipeline \

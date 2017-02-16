@@ -162,7 +162,7 @@ Resources:
         ResourceName: AWSEBAutoScalingGroup
         Namespace: aws:autoscaling:trigger
         Value: 5
-      - OptionName: UpperBreachIncrement
+      - OptionName: UpperBreachScaleIncrement
         ResourceName: AWSEBAutoScalingGroup
         Namespace: aws:autoscaling:trigger
         Value: 1
@@ -275,6 +275,10 @@ Resources:
         Ref: BeanstalkDemoConfigurationTemplateProd
       VersionLabel:
         Ref: BeanstalkDemoVersion
+      # OptionSettings:
+      # - OptionName: VPCId #TODO: inject VPC and subnets.
+      #   Namespace: aws:ec2:vpc
+      #   Value: !Ref: FromParams
   CodePipelineRole:
     Type: AWS::IAM::Role
     Properties:
