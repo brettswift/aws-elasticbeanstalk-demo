@@ -114,6 +114,30 @@ Resources:
         ResourceName: AWSEBAutoScalingGroup
         Namespace: aws:autoscaling:asg
         Value: '360'
+      - OptionName: MeasureName
+        ResourceName: AWSEBAutoScalingGroup
+        Namespace: aws:autoscaling:trigger
+        Value: CPUUtilization
+      - OptionName: Unit
+        ResourceName: AWSEBAutoScalingGroup
+        Namespace: aws:autoscaling:trigger
+        Value: Percent
+      - OptionName: LowerThreshold
+        ResourceName: AWSEBAutoScalingGroup
+        Namespace: aws:autoscaling:trigger
+        Value: 20
+      - OptionName: Period
+        ResourceName: AWSEBAutoScalingGroup
+        Namespace: aws:autoscaling:trigger
+        Value: 5
+      - OptionName: UpperBreachIncrement
+        ResourceName: AWSEBAutoScalingGroup
+        Namespace: aws:autoscaling:trigger
+        Value: 1
+      - OptionName: UpperThreshold
+        ResourceName: AWSEBAutoScalingGroup
+        Namespace: aws:autoscaling:trigger
+        Value: 60        
       - OptionName: MinSize
         Namespace: aws:autoscaling:asg
         Value: '2'
