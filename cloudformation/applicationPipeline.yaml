@@ -124,20 +124,30 @@ Resources:
         Namespace: aws:autoscaling:launchconfiguration
         # Valid values from: aws elasticbeanstalk describe-configuration-options. t2 isn't there but it works?!
         Value: t2.micro #TODO: expose via params just for param grouping.
-      - OptionName: MonitoringInterval
-        ResourceName: AWSEBAutoScalingLaunchConfiguration
-        Namespace: aws:autoscaling:launchconfiguration
-        Value: 1 minute
+      ############################################################
+      # #These options are required together.  Must create and assign the service role as well.
+      # https://forums.aws.amazon.com/thread.jspa?threadID=212981
+      # - OptionName: ServiceRole
+      #   Namespace: aws:elasticbeanstalk:application:environment
+      #   Value: aws-elasticbeanstalk-service-role
+      # - OptionName: DeploymentPolicy
+      #   Namespace: aws:elasticbeanstalk:command
+      #   Value: 'Immutable' #if immutable so must be RollingUpdateType
+      # - OptionName: MonitoringInterval
+      #   ResourceName: AWSEBAutoScalingLaunchConfiguration
+      #   Namespace: aws:autoscaling:launchconfiguration
+      #   Value: 1 minute
+      # - OptionName: SystemType
+      #   Namespace: aws:elasticbeanstalk:healthreporting:system
+      #   Value: enhanced
+      ############################################################
       - OptionName: RollingUpdateEnabled
         ResourceName: AWSEBAutoScalingGroup
         Namespace: aws:autoscaling:updatepolicy:rollingupdate
         Value: true
       - OptionName: RollingUpdateType
         Namespace: aws:autoscaling:updatepolicy:rollingupdate
-        Value: 'Immutable' #if immutable so must be DeploymentPolicy
-      - OptionName: DeploymentPolicy
-        Namespace: aws:elasticbeanstalk:command
-        Value: 'Immutable' #if immutable so must be RollingUpdateType
+        Value: 'Health' #if immutable so must be DeploymentPolicy
       - OptionName: Timeout
         ResourceName: AWSEBAutoScalingGroup
         Namespace: aws:autoscaling:updatepolicy:rollingupdate
@@ -151,10 +161,10 @@ Resources:
         Value: RACK_ENV=production,RAILS_SKIP_MIGRATIONS=false,RAILS_SKIP_ASSET_COMPILATION=false,BUNDLE_WITHOUT=test:development
       - OptionName: InstancePort
         Namespace: aws:cloudformation:template:parameter
-        Value: '80' #TODO: move port to 8080
-      # - OptionName: RubyVersion
-      #   Namespace: aws:cloudformation:template:parameter
-      #   Value: 2.3.1
+        Value: '80' #TODO: move port to 8080, test in one update.
+      - OptionName: RubyVersion
+        Namespace: aws:cloudformation:template:parameter
+        Value: 2.3.1
       - OptionName: Application Healthcheck URL
         Namespace: aws:elasticbeanstalk:application
         Value: "/health"
@@ -166,19 +176,16 @@ Resources:
         Value: '600'
       - OptionName: RollbackLaunchOnFailure
         Namespace: aws:elasticbeanstalk:control
-        Value: 'true'
+        Value: true
       - OptionName: ConfigDocument
         Namespace: aws:elasticbeanstalk:healthreporting:system
         Value: '{"Version":1,"CloudWatchMetrics":{"Instance":{"CPUIrq":null,"LoadAverage5min":null,"ApplicationRequests5xx":null,"ApplicationRequests4xx":null,"CPUUser":null,"LoadAverage1min":null,"ApplicationLatencyP50":null,"CPUIdle":null,"InstanceHealth":null,"ApplicationLatencyP95":null,"ApplicationLatencyP85":null,"RootFilesystemUtil":null,"ApplicationLatencyP90":null,"CPUSystem":null,"ApplicationLatencyP75":null,"CPUSoftirq":null,"ApplicationLatencyP10":null,"ApplicationLatencyP99":null,"ApplicationRequestsTotal":null,"ApplicationLatencyP99.9":null,"ApplicationRequests3xx":null,"ApplicationRequests2xx":null,"CPUIowait":null,"CPUNice":null},"Environment":{"InstancesSevere":null,"InstancesDegraded":null,"ApplicationRequests5xx":null,"ApplicationRequests4xx":null,"ApplicationLatencyP50":null,"ApplicationLatencyP95":null,"ApplicationLatencyP85":null,"InstancesUnknown":null,"ApplicationLatencyP90":null,"InstancesInfo":null,"InstancesPending":null,"ApplicationLatencyP75":null,"ApplicationLatencyP10":null,"ApplicationLatencyP99":null,"ApplicationRequestsTotal":null,"InstancesNoData":null,"ApplicationLatencyP99.9":null,"ApplicationRequests3xx":null,"ApplicationRequests2xx":null,"InstancesOk":null,"InstancesWarning":null}}}'
       - OptionName: HealthCheckSuccessThreshold
         Namespace: aws:elasticbeanstalk:healthreporting:system
         Value: Ok
-      - OptionName: SystemType
-        Namespace: aws:elasticbeanstalk:healthreporting:system
-        Value: enhanced
       - OptionName: Automatically Terminate Unhealthy Instances
         Namespace: aws:elasticbeanstalk:monitoring
-        Value: 'true' #TODO: chaos monkey!
+        Value: true #TODO: chaos monkey!
   BeanstalkDemoEnvDev: #create dev/test envs that use the non-prod configuration.
     Type: AWS::ElasticBeanstalk::Environment
     DependsOn:
